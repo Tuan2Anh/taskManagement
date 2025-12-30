@@ -36,19 +36,37 @@ afterAll(async () => {
 });
 
 describe('Task Endpoints', () => {
-    it('should create a new task', async () => {
+    let secondUser;
+    let secondToken;
+
+    beforeAll(async () => {
+        // Create a second user for assignment tests
+        const userRes = await request(app)
+            .post('/api/auth/register')
+            .send({
+                username: 'seconduser',
+                email: 'second@example.com',
+                password: 'password123'
+            });
+        secondToken = userRes.body.token;
+        secondUser = userRes.body;
+    });
+
+    it('should create a new task with assignees', async () => {
         const res = await request(app)
             .post('/api/tasks')
             .set('Authorization', `Bearer ${token}`)
             .send({
                 title: 'Test Task',
                 description: 'Test Description',
-                priority: 'High'
+                priority: 'High',
+                assignees: [secondUser._id]
             });
 
         expect(res.statusCode).toEqual(201);
         expect(res.body.title).toBe('Test Task');
         expect(res.body.priority).toBe('High');
+        expect(res.body.assignees).toContain(secondUser._id);
         taskId = res.body._id;
     });
 
@@ -60,6 +78,7 @@ describe('Task Endpoints', () => {
         expect(res.statusCode).toEqual(200);
         expect(res.body.tasks).toBeInstanceOf(Array);
         expect(res.body.tasks.length).toBeGreaterThan(0);
+        expect(res.body.tasks[0].assignees[0]).toHaveProperty('username'); // Populated
     });
 
     it('should get a single task by ID', async () => {
@@ -72,7 +91,7 @@ describe('Task Endpoints', () => {
         expect(res.body._id).toBe(taskId);
     });
 
-    it('should update a task', async () => {
+    it('should allow creator to update task', async () => {
         const res = await request(app)
             .put(`/api/tasks/${taskId}`)
             .set('Authorization', `Bearer ${token}`)
@@ -86,14 +105,92 @@ describe('Task Endpoints', () => {
         expect(res.body.status).toBe('In Progress');
     });
 
+    it('should allow assignee to update task', async () => {
+        // secondUser is assigned to the task
+        const res = await request(app)
+            .put(`/api/tasks/${taskId}`)
+            .set('Authorization', `Bearer ${secondToken}`)
+            .send({
+                status: 'Done'
+            });
+
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.status).toBe('Done');
+    });
+
+    it('should deny non-related user from updating task', async () => {
+        // Create 3rd user
+        const thirdUserRes = await request(app)
+            .post('/api/auth/register')
+            .send({
+                username: 'third',
+                email: 'third@example.com',
+                password: 'password123'
+            });
+        const thirdToken = thirdUserRes.body.token;
+
+        const res = await request(app)
+            .put(`/api/tasks/${taskId}`)
+            .set('Authorization', `Bearer ${thirdToken}`)
+            .send({
+                title: 'Hacker Update'
+            });
+
+        expect(res.statusCode).toEqual(403);
+    });
+
     it('should filter tasks by status', async () => {
         const res = await request(app)
-            .get('/api/tasks?status=In Progress')
+            .get('/api/tasks?status=Done')
             .set('Authorization', `Bearer ${token}`);
 
         expect(res.statusCode).toEqual(200);
+        // We updated it to Done in previous test
         expect(res.body.tasks.length).toBe(1);
-        expect(res.body.tasks[0].status).toBe('In Progress');
+        expect(res.body.tasks[0].status).toBe('Done');
+    });
+
+    it('should filter tasks by tags', async () => {
+        // First create a task with tags
+        await request(app)
+            .post('/api/tasks')
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+                title: 'Tagged Task',
+                description: 'Description',
+                tags: ['urgent', 'backend']
+            });
+
+        const res = await request(app)
+            .get('/api/tasks?tags=urgent')
+            .set('Authorization', `Bearer ${token}`);
+
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.tasks.length).toBeGreaterThan(0);
+        expect(res.body.tasks[0].tags).toContain('urgent');
+    });
+
+    it('should filter tasks by due date', async () => {
+        // Create a task with a specific due date (tomorrow)
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const dateStr = tomorrow.toISOString().split('T')[0]; // YYYY-MM-DD
+
+        await request(app)
+            .post('/api/tasks')
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+                title: 'Due Date Task',
+                dueDate: tomorrow
+            });
+
+        const res = await request(app)
+            .get(`/api/tasks?dueDate=${dateStr}`)
+            .set('Authorization', `Bearer ${token}`);
+
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.tasks.length).toBeGreaterThan(0);
+        // Basic check to ensure we got results back for that date
     });
 
     it('should soft delete a task', async () => {

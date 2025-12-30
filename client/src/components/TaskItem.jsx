@@ -57,6 +57,16 @@ const TaskItem = ({ task, onDelete, onUpdateStatus, onEdit, onViewDetails }) => 
                 {task.description || "No description provided."}
             </p>
 
+            {task.tags && task.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                    {task.tags.map((tag, index) => (
+                        <span key={index} className="px-2 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider rounded-md border border-slate-200">
+                            {tag}
+                        </span>
+                    ))}
+                </div>
+            )}
+
             <div className="pt-4 mt-auto border-t border-slate-100 flex items-center justify-between gap-2">
                 <select
                     value={task.status}

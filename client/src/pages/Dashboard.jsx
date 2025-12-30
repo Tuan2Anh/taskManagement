@@ -11,10 +11,19 @@ import { Plus, Download } from 'lucide-react';
 const Dashboard = () => {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [users, setUsers] = useState([]);
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        totalPages: 1,
+        totalTasks: 0,
+    });
     const [filters, setFilters] = useState({
         search: '',
         status: '',
         priority: '',
+        assignee: '',
+        dueDate: '',
+        tags: '',
     });
 
     // Modal states
@@ -22,16 +31,26 @@ const Dashboard = () => {
     const [taskToEdit, setTaskToEdit] = useState(null);
     const [selectedTask, setSelectedTask] = useState(null);
 
-    const fetchTasks = async () => {
+    const fetchTasks = async (page = 1) => {
         try {
             setLoading(true);
             const params = new URLSearchParams();
             if (filters.search) params.append('search', filters.search);
             if (filters.status) params.append('status', filters.status);
             if (filters.priority) params.append('priority', filters.priority);
+            if (filters.assignee) params.append('assignee', filters.assignee);
+            if (filters.dueDate) params.append('dueDate', filters.dueDate);
+            if (filters.tags) params.append('tags', filters.tags);
+            params.append('page', page);
+            params.append('limit', 9); // 9 items per page (3x3 grid)
 
             const response = await api.get(`/tasks?${params.toString()}`);
             setTasks(response.data.tasks);
+            setPagination({
+                currentPage: response.data.currentPage,
+                totalPages: response.data.totalPages,
+                totalTasks: response.data.totalTasks,
+            });
         } catch (error) {
             toast.error('Failed to fetch tasks');
             console.error(error);
@@ -40,9 +59,28 @@ const Dashboard = () => {
         }
     };
 
+    const fetchUsers = async () => {
+        try {
+            const response = await api.get('/users');
+            setUsers(response.data);
+        } catch (error) {
+            console.error('Failed to fetch users', error);
+        }
+    };
+
     useEffect(() => {
-        fetchTasks();
+        fetchUsers();
+    }, []);
+
+    useEffect(() => {
+        fetchTasks(1); // Reset to page 1 when filters change
     }, [filters]);
+
+    const handlePageChange = (newPage) => {
+        if (newPage >= 1 && newPage <= pagination.totalPages) {
+            fetchTasks(newPage);
+        }
+    };
 
     const handleDelete = async (taskId) => {
         if (window.confirm('Are you sure you want to delete this task?')) {
@@ -133,7 +171,7 @@ const Dashboard = () => {
 
                     {/* Filters & Content */}
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                        <TaskFilter filters={filters} setFilters={setFilters} />
+                        <TaskFilter filters={filters} setFilters={setFilters} users={users} />
                     </div>
 
                     {loading ? (
@@ -181,6 +219,29 @@ const Dashboard = () => {
                                     onViewDetails={handleViewDetails}
                                 />
                             ))}
+                        </div>
+                    )}
+
+                    {/* Pagination Controls */}
+                    {!loading && tasks.length > 0 && (
+                        <div className="flex justify-center items-center space-x-2 mt-8">
+                            <button
+                                onClick={() => handlePageChange(pagination.currentPage - 1)}
+                                disabled={pagination.currentPage === 1}
+                                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Previous
+                            </button>
+                            <span className="text-slate-600 font-medium">
+                                Page {pagination.currentPage} of {pagination.totalPages}
+                            </span>
+                            <button
+                                onClick={() => handlePageChange(pagination.currentPage + 1)}
+                                disabled={pagination.currentPage === pagination.totalPages}
+                                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Next
+                            </button>
                         </div>
                     )}
                 </div>

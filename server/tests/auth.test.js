@@ -69,4 +69,47 @@ describe('Auth Endpoints', () => {
 
         expect(res.statusCode).toEqual(401);
     });
+
+    it('should request key for forgot password', async () => {
+        const res = await request(app)
+            .post('/api/auth/forgotpassword')
+            .send({ email: testUser.email });
+
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.success).toBe(true);
+    });
+
+    it('should reset password with valid token', async () => {
+        const crypto = require('crypto');
+        const resetToken = 'testresettoken';
+        const resetPasswordToken = crypto
+            .createHash('sha256')
+            .update(resetToken)
+            .digest('hex');
+
+        // Manually update user with reset token
+        await User.findOneAndUpdate(
+            { email: testUser.email },
+            {
+                resetPasswordToken,
+                resetPasswordExpire: Date.now() + 10 * 60 * 1000
+            }
+        );
+
+        const res = await request(app)
+            .put(`/api/auth/resetpassword/${resetToken}`)
+            .send({ password: 'newpassword123' });
+
+        expect(res.statusCode).toEqual(201);
+        expect(res.body.success).toBe(true);
+
+        // Verify login with new password
+        const loginRes = await request(app)
+            .post('/api/auth/login')
+            .send({
+                email: testUser.email,
+                password: 'newpassword123'
+            });
+        expect(loginRes.statusCode).toEqual(200);
+    });
 });

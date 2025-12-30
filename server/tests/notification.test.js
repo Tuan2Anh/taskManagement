@@ -54,7 +54,7 @@ describe('Notification Endpoints', () => {
             .set('Authorization', `Bearer ${tokenAssigner}`)
             .send({
                 title: 'Assigned Task',
-                assignee: assigneeId,
+                assignees: [assigneeId],
                 priority: 'High'
             });
 

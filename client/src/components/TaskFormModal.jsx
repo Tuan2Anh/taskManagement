@@ -13,6 +13,7 @@ const TaskFormModal = ({ isOpen, onClose, taskToEdit, onTaskSaved }) => {
         priority: 'Medium',
         dueDate: '',
         assignees: [],
+        tags: '',
     });
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -23,8 +24,8 @@ const TaskFormModal = ({ isOpen, onClose, taskToEdit, onTaskSaved }) => {
             const fetchUsers = async () => {
                 try {
                     const response = await api.get('/users');
-                    // Filter out current user so they can't assign to themselves
-                    const otherUsers = response.data.filter(u => u._id !== currentUser?._id);
+                    // Filter out current user and admins so they can't be assigned
+                    const otherUsers = response.data.filter(u => u._id !== currentUser?._id && u.role !== 'admin');
                     setUsers(otherUsers);
                 } catch (error) {
                     console.error('Failed to load users', error);
@@ -40,6 +41,7 @@ const TaskFormModal = ({ isOpen, onClose, taskToEdit, onTaskSaved }) => {
                 priority: taskToEdit?.priority || 'Medium',
                 dueDate: taskToEdit?.dueDate ? taskToEdit.dueDate.split('T')[0] : '',
                 assignees: taskToEdit?.assignees ? taskToEdit.assignees.map(a => a._id) : [],
+                tags: taskToEdit?.tags ? taskToEdit.tags.join(', ') : '',
             });
         }
     }, [isOpen, taskToEdit, currentUser]);
@@ -64,11 +66,17 @@ const TaskFormModal = ({ isOpen, onClose, taskToEdit, onTaskSaved }) => {
         e.preventDefault();
         setLoading(true);
         try {
+            // Format tags as array
+            const payload = {
+                ...formData,
+                tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== '')
+            };
+
             if (taskToEdit) {
-                await api.put(`/tasks/${taskToEdit._id}`, formData);
+                await api.put(`/tasks/${taskToEdit._id}`, payload);
                 toast.success('Task updated successfully');
             } else {
-                await api.post('/tasks', formData);
+                await api.post('/tasks', payload);
                 toast.success('Task created successfully');
             }
             onTaskSaved();
@@ -108,6 +116,18 @@ const TaskFormModal = ({ isOpen, onClose, taskToEdit, onTaskSaved }) => {
                             required
                             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
                             placeholder="What needs to be done?"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Tags (comma separated)</label>
+                        <input
+                            type="text"
+                            name="tags"
+                            value={formData.tags}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                            placeholder="e.g. Design, Urgent, Backend"
                         />
                     </div>
 
@@ -173,8 +193,8 @@ const TaskFormModal = ({ isOpen, onClose, taskToEdit, onTaskSaved }) => {
                                         key={user._id}
                                         onClick={() => toggleAssignee(user._id)}
                                         className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${formData.assignees.includes(user._id)
-                                                ? 'bg-indigo-50 border border-indigo-200'
-                                                : 'hover:bg-slate-100 border border-transparent'
+                                            ? 'bg-indigo-50 border border-indigo-200'
+                                            : 'hover:bg-slate-100 border border-transparent'
                                             }`}
                                     >
                                         <div className="flex items-center gap-2">

@@ -1,5 +1,6 @@
 const Task = require('../models/Task');
-const User = require('../models/User');
+const Log = require('../models/Log');
+const Notification = require('../models/Notification');
 const { createLog } = require('./commentLogController');
 
 // @desc    Create a new task
@@ -30,8 +31,21 @@ exports.createTask = async (req, res) => {
 
         await createLog(task._id, req.user._id, 'CREATED_TASK', `Task "${title}" created.`);
 
-        // Correct logic for multiple assignees notification would go here
-        // For brevity, skipping loop for notifications in this snippet
+        // Create notifications for assignees
+        if (assignees && assignees.length > 0) {
+            const notifications = assignees
+                .filter(assigneeId => assigneeId.toString() !== req.user._id.toString())
+                .map(assigneeId => ({
+                    recipient: assigneeId,
+                    message: `You have been assigned to task "${title}"`,
+                    task: task._id,
+                    isRead: false
+                }));
+
+            if (notifications.length > 0) {
+                await Notification.insertMany(notifications);
+            }
+        }
 
         res.status(201).json(task);
     } catch (error) {
@@ -44,11 +58,29 @@ exports.createTask = async (req, res) => {
 // @access  Private
 exports.getTasks = async (req, res) => {
     try {
-        const { status, priority, search, page = 1, limit = 10 } = req.query;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const { status, priority, search } = req.query;
         const query = { isDeleted: false };
 
         if (status) query.status = status;
         if (priority) query.priority = priority;
+        if (req.query.tags) {
+            query.tags = { $in: [req.query.tags] }; // Specific tag
+        }
+
+        if (req.query.dueDate) {
+            // Filter by specific date (ignoring time)
+            const date = new Date(req.query.dueDate);
+            const nextDay = new Date(date);
+            nextDay.setDate(date.getDate() + 1);
+
+            query.dueDate = {
+                $gte: date,
+                $lt: nextDay
+            };
+        }
+
         if (search) {
             query.$or = [
                 { title: { $regex: search, $options: 'i' } },
