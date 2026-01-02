@@ -1,208 +1,73 @@
-const Task = require('../models/Task');
-const Log = require('../models/Log');
-const Notification = require('../models/Notification');
-const { createLog } = require('./commentLogController');
+const taskService = require('../services/taskService');
+const { validateTask } = require('../validations/taskValidation');
+const ExcelJS = require('exceljs'); // Keep excel generation logic library usage here or in service? 
+// I moved data fetching to service. I'll build excel here for now to keep service pure data, 
+// OR I should move Excel logic to service to keep controller thin. Let's move Excel logic to service to be consistent. 
+// Wait, I didn't import ExcelJS in service. Let me update controller to handle the View/Response part (Excel creation) 
+// using data from service. This is a good MVC separation.
 
-// @desc    Create a new task
-// @route   POST /api/tasks
-// @access  Private
-// @desc    Create a new task
-// @route   POST /api/tasks
-// @access  Private
 exports.createTask = async (req, res) => {
     try {
-        let { title, description, status, priority, dueDate, tags, assignees } = req.body;
-
-        // Ensure assignees is an array
-        if (!assignees) {
-            assignees = [];
-        }
-
-        const task = await Task.create({
-            title,
-            description,
-            status,
-            priority,
-            dueDate,
-            tags,
-            assignees,
-            createdBy: req.user._id,
-        });
-
-        await createLog(task._id, req.user._id, 'CREATED_TASK', `Task "${title}" created.`);
-
-        // Create notifications for assignees
-        if (assignees && assignees.length > 0) {
-            const notifications = assignees
-                .filter(assigneeId => assigneeId.toString() !== req.user._id.toString())
-                .map(assigneeId => ({
-                    recipient: assigneeId,
-                    message: `You have been assigned to task "${title}"`,
-                    task: task._id,
-                    isRead: false
-                }));
-
-            if (notifications.length > 0) {
-                await Notification.insertMany(notifications);
-            }
-        }
-
+        validateTask(req.body);
+        const task = await taskService.createTask(req.body, req.user);
         res.status(201).json(task);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// @desc    Get all tasks with pagination and filter
-// @route   GET /api/tasks
-// @access  Private
 exports.getTasks = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-        const { status, priority, search } = req.query;
-        const query = { isDeleted: false };
+        const filters = {
+            status: req.query.status,
+            priority: req.query.priority,
+            search: req.query.search,
+            params: req.query // pass full query for tags/dueDate/assignee
+        };
 
-        if (status) query.status = status;
-        if (priority) query.priority = priority;
-        if (req.query.tags) {
-            query.tags = { $in: [req.query.tags] }; // Specific tag
-        }
-
-        if (req.query.dueDate) {
-            // Filter by specific date (ignoring time)
-            const date = new Date(req.query.dueDate);
-            const nextDay = new Date(date);
-            nextDay.setDate(date.getDate() + 1);
-
-            query.dueDate = {
-                $gte: date,
-                $lt: nextDay
-            };
-        }
-
-        if (search) {
-            query.$or = [
-                { title: { $regex: search, $options: 'i' } },
-                { description: { $regex: search, $options: 'i' } },
-            ];
-        }
-
-        if (req.query.assignee) {
-            // Check if assignee ID is in the assignees array
-            query.assignees = req.query.assignee;
-        }
-
-        const count = await Task.countDocuments(query);
-        const tasks = await Task.find(query)
-            .populate('assignees', 'username email')
-            .populate('createdBy', 'username')
-            .sort({ createdAt: -1 })
-            .limit(limit * 1)
-            .skip((page - 1) * limit);
-
-        res.json({
-            tasks,
-            totalPages: Math.ceil(count / limit),
-            currentPage: page,
-            totalTasks: count,
-        });
+        const result = await taskService.getTasks(filters, page, limit);
+        res.json(result);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// @desc    Get single task
-// @route   GET /api/tasks/:id
-// @access  Private
 exports.getTaskById = async (req, res) => {
     try {
-        const task = await Task.findById(req.params.id)
-            .populate('assignees', 'username email')
-            .populate('createdBy', 'username');
-
-        if (task) {
-            res.json(task);
-        } else {
-            res.status(404).json({ message: 'Task not found' });
-        }
+        const task = await taskService.getTaskById(req.params.id);
+        res.json(task);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        const status = error.message === 'Task not found' ? 404 : 500;
+        res.status(status).json({ message: error.message });
     }
 };
 
-// @desc    Update a task
-// @route   PUT /api/tasks/:id
-// @access  Private
 exports.updateTask = async (req, res) => {
     try {
-        const task = await Task.findById(req.params.id);
-
-        if (task) {
-            // Check ownership/permissions
-            // Allow update if: User is Creator OR User is IN Assignees list OR User is Admin
-            const isCreator = task.createdBy.toString() === req.user._id.toString();
-            const isAssignee = task.assignees && task.assignees.some(id => id.toString() === req.user._id.toString());
-            const isAdmin = req.user.role === 'admin';
-
-            if (!isCreator && !isAssignee && !isAdmin) {
-                return res.status(403).json({ message: 'Not authorized to update this task' });
-            }
-            const updatedTask = await Task.findByIdAndUpdate(req.params.id, req.body, {
-                new: true,
-                runValidators: true,
-            })
-                .populate('assignees', 'username email')
-                .populate('createdBy', 'username');
-
-            await createLog(task._id, req.user._id, 'UPDATED_TASK', `Task updated.`);
-
-            res.json(updatedTask);
-        } else {
-            res.status(404).json({ message: 'Task not found' });
-        }
+        const task = await taskService.updateTask(req.params.id, req.body, req.user);
+        res.json(task);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        const status = error.message.includes('Not authorized') ? 403 : (error.message === 'Task not found' ? 404 : 500);
+        res.status(status).json({ message: error.message });
     }
 };
 
-// @desc    Soft delete a task
-// @route   DELETE /api/tasks/:id
-// @access  Private
 exports.deleteTask = async (req, res) => {
     try {
-        const task = await Task.findById(req.params.id);
-
-        if (task) {
-            // Check ownership/permissions
-            // Allow delete only if: User is Creator OR User is Admin
-            const isCreator = task.createdBy.toString() === req.user._id.toString();
-            const isAdmin = req.user.role === 'admin';
-
-            if (!isCreator && !isAdmin) {
-                return res.status(403).json({ message: 'Not authorized to delete this task' });
-            }
-
-            task.isDeleted = true;
-            await task.save();
-
-            await createLog(task._id, req.user._id, 'DELETED_TASK', `Task soft deleted.`);
-
-            res.json({ message: 'Task removed (soft delete)' });
-        } else {
-            res.status(404).json({ message: 'Task not found' });
-        }
+        const result = await taskService.deleteTask(req.params.id, req.user);
+        res.json(result);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        const status = error.message.includes('Not authorized') ? 403 : (error.message === 'Task not found' ? 404 : 500);
+        res.status(status).json({ message: error.message });
     }
 };
 
-// @desc    Export tasks to Excel
-// @route   GET /api/tasks/export
-// @access  Private
 exports.exportTasks = async (req, res) => {
     try {
-        const ExcelJS = require('exceljs');
+        const tasks = await taskService.exportTasks();
+
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Tasks');
 
@@ -215,11 +80,6 @@ exports.exportTasks = async (req, res) => {
             { header: 'Created By', key: 'createdBy', width: 20 },
             { header: 'Created At', key: 'createdAt', width: 20 },
         ];
-
-        // Fetch tasks
-        const tasks = await Task.find({ isDeleted: false })
-            .populate('assignees', 'username email')
-            .populate('createdBy', 'username');
 
         tasks.forEach((task) => {
             const assigneeNames = task.assignees ? task.assignees.map(u => u.username).join(', ') : '';

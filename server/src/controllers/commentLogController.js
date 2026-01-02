@@ -1,50 +1,16 @@
-const Comment = require('../models/Comment');
-const Log = require('../models/Log');
-const Task = require('../models/Task');
-
-// Helper to create log (can be moved to utils)
-const createLog = async (taskId, userId, action, details) => {
-    try {
-        await Log.create({
-            task: taskId,
-            user: userId,
-            action,
-            details,
-        });
-    } catch (error) {
-        console.error('Error creating log:', error);
-    }
-};
-
-exports.createLog = createLog; // Export for use in other controllers
+const commentService = require('../services/commentService');
+const logService = require('../services/logService');
 
 // @desc    Add a comment to task
 // @route   POST /api/tasks/:taskId/comments
 // @access  Private
 exports.addComment = async (req, res) => {
     try {
-        const { content } = req.body;
-        const taskId = req.params.taskId;
-
-        const task = await Task.findById(taskId);
-        if (!task) {
-            return res.status(404).json({ message: 'Task not found' });
-        }
-
-        const comment = await Comment.create({
-            task: taskId,
-            user: req.user._id,
-            content,
-        });
-
-        // Log the action
-        await createLog(taskId, req.user._id, 'ADDED_COMMENT', `Added comment: ${content.substring(0, 50)}...`);
-
-        const populatedComment = await Comment.findById(comment._id).populate('user', 'username email');
-
-        res.status(201).json(populatedComment);
+        const comment = await commentService.addComment(req.params.taskId, req.user._id, req.body.content);
+        res.status(201).json(comment);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        const status = error.message === 'Task not found' ? 404 : 500;
+        res.status(status).json({ message: error.message });
     }
 };
 
@@ -53,10 +19,7 @@ exports.addComment = async (req, res) => {
 // @access  Private
 exports.getComments = async (req, res) => {
     try {
-        const comments = await Comment.find({ task: req.params.taskId })
-            .populate('user', 'username email')
-            .sort({ createdAt: 1 }); // Oldest first
-
+        const comments = await commentService.getComments(req.params.taskId);
         res.json(comments);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -68,12 +31,13 @@ exports.getComments = async (req, res) => {
 // @access  Private
 exports.getLogs = async (req, res) => {
     try {
-        const logs = await Log.find({ task: req.params.taskId })
-            .populate('user', 'username email')
-            .sort({ createdAt: -1 }); // Newest first
-
+        const logs = await logService.getLogs(req.params.taskId);
         res.json(logs);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
+
+// Also export createLog if older consumers need it, but ideally they should use logService
+// For specific backward compatibility with tests/routes that might import it from controller file:
+exports.createLog = logService.createLog;

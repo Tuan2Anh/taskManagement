@@ -9,8 +9,10 @@ let userId;
 
 beforeAll(async () => {
     process.env.JWT_SECRET = 'test_secret';
-    const url = process.env.MONGO_URI || 'mongodb://localhost:27017/taskmanagement';
+    const url = process.env.MONGO_URI || 'mongodb://localhost:27017/task-manager-test';
     await mongoose.connect(url);
+    await User.deleteMany();
+    await Task.deleteMany();
 
     // Create a user for testing tasks
     const userRes = await request(app)

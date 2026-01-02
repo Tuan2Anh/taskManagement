@@ -8,6 +8,7 @@ beforeAll(async () => {
     process.env.JWT_SECRET = 'test_secret';
     const url = process.env.MONGO_URI || 'mongodb://localhost:27017/task-manager-test';
     await mongoose.connect(url);
+    await User.deleteMany(); // Start with a clean slate
 });
 
 // Clean up database after each test run
