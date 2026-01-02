@@ -30,6 +30,9 @@ Dự án quản lý công việc (Task Management) mạnh mẽ và linh hoạt, 
 ### 4. Tiện Ích Khác
 *   **Export Excel**: Xuất danh sách công việc ra file Excel.
 *   **Giao Diện Hiện Đại**: Thiết kế với TailwindCSS, Responsive, hỗ trợ các Modal tương tác.
+*   **Clean Architecture**:
+    *   **Frontend**: Chia tách API Layer (`apis/`), Common Components (`components/common/`).
+    *   **Backend**: Chia tách Controller, Service, Validation, Provider.
 
 ---
 
@@ -39,15 +42,16 @@ Dự án quản lý công việc (Task Management) mạnh mẽ và linh hoạt, 
 *   **Core**: React (Vite)
 *   **Styling**: TailwindCSS
 *   **Icons**: Lucide React
-*   **State/API**: Context API, Axios (với Interceptors)
+*   **State/API**: Context API, Axios (với Interceptors), **Clean API Architecture** (`client/src/apis`).
 *   **Notifications**: React Toastify
 
 ### Backend
 *   **Runtime**: Node.js
 *   **Framework**: Express.js
 *   **Database**: MongoDB (Mongoose ODM)
-*   **Security**: Bcryptjs, JWT, Helmet, Rate Limiting, XSS Clean
-*   **Testing**: Jest, Supertest
+*   **Architecture**: Service-Controller Pattern (Layered Architecture).
+*   **Security**: Bcryptjs, JWT, Helmet, Rate Limiting, XSS Clean.
+*   **Testing**: Jest, Supertest.
 
 ### DevOps
 *   **Containerization**: Docker, Docker Compose
@@ -68,7 +72,7 @@ Dự án quản lý công việc (Task Management) mạnh mẽ và linh hoạt, 
     docker-compose up --build
     ```
 3.  Truy cập ứng dụng:
-    *   **Frontend**: [http://localhost:5173](http://localhost:5173)
+    *   **Frontend**: [http://localhost:5173](http://localhost:5173) (Docker map port 8080 or 5173 check docker-compose)
     *   **Backend API**: [http://localhost:5000](http://localhost:5000)
 
 ### Cách 2: Chạy Thủ Công (Development Mode)
@@ -110,28 +114,26 @@ Nếu bạn muốn chạy từng phần để phát triển (Dev).
 
 ## Cấu Hình Biến Môi Trường (.env)
 
-Tạo file `.env` trong thư mục `server/`. Dưới đây là mẫu cấu hình:
+Tạo file `.env` trong thư mục `server/` và cấu hình các biến sau:
 
 ```env
-# Server Configuration
+# Server
 PORT=5000
 NODE_ENV=development
 
 # Database
-MONGO_URI=mongodb://localhost:27017/task-manager
-# Nếu dùng Docker thì MONGO_URI nên là: mongodb://mongo:27017/task-manager
+MONGO_URI= # Connection string MongoDB (VD: mongodb://localhost:27017/task-manager)
 
 # Security
-JWT_SECRET=your_super_secret_jwt_key_here
+JWT_SECRET= # Chuỗi bí mật ngẫu nhiên cho JWT
 JWT_EXPIRE=30d
 
-# Email Service (Dùng cho tính năng Quên Mật Khẩu)
-EMAIL_SERVICE=gmail
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASS=your-email-app-password
-CLIENT_URL=http://localhost:5173
+# Email Service (Dùng cho tính năng Quên Mật Khẩu - Tùy chọn)
+EMAIL_SERVICE= # Ví dụ: gmail
+EMAIL_USER= # Email của bạn
+EMAIL_PASS= # App Password của email
+CLIENT_URL= # URL frontend (VD: http://localhost:5173)
 ```
-
 ---
 
 ## Chạy Kiểm Thử (Unit Tests)
@@ -156,18 +158,24 @@ Dự án bao gồm bộ Unit Test cho Backend để đảm bảo tính ổn đ�
 taskManagement/
 ├── client/                 # Mã nguồn Frontend (React)
 │   ├── src/
-│   │   ├── components/     # Các thành phần tái sử dụng (Modal, Filter, Item...)
+│   │   ├── apis/           # API Layer (authApi, taskApi, userApi...) - Named Exports
+│   │   ├── components/     
+│   │   │   ├── common/     # Reusable Components (Button, Input...)
+│   │   │   └── ...         # Các component khác (Modal, Filter...)
 │   │   ├── pages/          # Các trang chính (Dashboard, Login, Register...)
 │   │   ├── context/        # Quản lý Auth State
-│   │   └── api/            # Cấu hình Axios
+│   │   └── ...
 │   └── Dockerfile          # Cấu hình Docker cho Client
 │
 ├── server/                 # Mã nguồn Backend (Node.js)
 │   ├── src/
-│   │   ├── controllers/    # Logic xử lý nghiệp vụ
-│   │   ├── models/         # Schema MongoDB (Task, User, Log...)
+│   │   ├── controllers/    # Xử lý request/response
+│   │   ├── services/       # Xử lý logic nghiệp vụ (Business Logic)
+│   │   ├── models/         # Schema MongoDB
 │   │   ├── routes/         # Định tuyến API
-│   │   └── middlewares/    # Middleware (Auth, Error Handler...)
+│   │   ├── middlewares/    # Middleware (Auth, Error Handler...)
+│   │   ├── validations/    # Joi Validation Schemas
+│   │   └── providers/      # Các service bên ngoài (Email...)
 │   ├── tests/              # Unit Tests
 │   └── Dockerfile          # Cấu hình Docker cho Server
 │
