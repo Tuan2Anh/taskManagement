@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Layout, ArrowRight } from 'lucide-react';
+import Button from '../components/common/Button';
+import Input from '../components/common/Input';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -48,25 +50,21 @@ const Login = () => {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700 ml-1">Email Address</label>
-                            <input
-                                type="email"
-                                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-900 placeholder:text-slate-400"
-                                placeholder="name@company.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                            />
-                        </div>
+                        <Input
+                            label="Email Address"
+                            type="email"
+                            placeholder="name@company.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                        />
                         <div className="space-y-2">
                             <div className="flex justify-between items-center ml-1">
                                 <label className="text-sm font-semibold text-slate-700">Password</label>
                                 <Link to="/forgotpassword" className="text-sm font-medium text-indigo-600 hover:text-indigo-700">Forgot password?</Link>
                             </div>
-                            <input
+                            <Input
                                 type="password"
-                                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-900 placeholder:text-slate-400"
                                 placeholder="••••••••"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
@@ -74,20 +72,14 @@ const Login = () => {
                             />
                         </div>
 
-                        <button
+                        <Button
                             type="submit"
-                            disabled={loading}
-                            className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-slate-800 focus:ring-4 focus:ring-slate-900/20 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2"
+                            loading={loading}
+                            className="w-full py-4 text-base"
                         >
-                            {loading ? (
-                                <span>Signing in...</span>
-                            ) : (
-                                <>
-                                    <span>Sign in</span>
-                                    <ArrowRight className="w-5 h-5" />
-                                </>
-                            )}
-                        </button>
+                            <span>Sign in</span>
+                            <ArrowRight className="w-5 h-5 ml-2" />
+                        </Button>
                     </form>
 
                     <div className="mt-8 text-center">

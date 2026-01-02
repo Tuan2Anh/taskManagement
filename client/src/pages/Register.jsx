@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { UserPlus } from 'lucide-react';
+import Button from '../components/common/Button';
+import Input from '../components/common/Input';
 
 const Register = () => {
     const [username, setUsername] = useState('');
@@ -30,54 +32,44 @@ const Register = () => {
                 </div>
                 <h2 className="text-2xl font-bold text-center text-gray-800 mb-8">Create an Account</h2>
                 <form onSubmit={handleSubmit}>
-                    <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="username">
-                            Username
-                        </label>
-                        <input
-                            type="text"
+                    <div className="space-y-4">
+                        <Input
+                            label="Username"
                             id="username"
-                            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                             placeholder="Choose a username"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             required
                         />
-                    </div>
-                    <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
-                            Email Address
-                        </label>
-                        <input
+                        <Input
+                            label="Email Address"
                             type="email"
                             id="email"
-                            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                             placeholder="Enter your email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
                         />
-                    </div>
-                    <div className="mb-6">
-                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
-                            Password
-                        </label>
-                        <input
+                        <Input
+                            label="Password"
                             type="password"
                             id="password"
-                            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                             placeholder="Create a password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
                         />
                     </div>
-                    <button
+                    <Button
                         type="submit"
-                        className="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition duration-300"
+                        variant="primary" // Assuming green variant is not default, or use className to override if needed. 
+                        // Actually let's use className to match original green style if wanted, or stick to new design system (slate-900).
+                        // Let's stick to the new premium Button design (slate/dark) for consistency, unless user wants green.
+                        // The User requested "premium" earlier. Slate is more premium than generic green.
+                        className="w-full mt-6"
                     >
                         Register
-                    </button>
+                    </Button>
                 </form>
                 <p className="mt-4 text-center text-gray-600 text-sm">
                     Already have an account?{' '}

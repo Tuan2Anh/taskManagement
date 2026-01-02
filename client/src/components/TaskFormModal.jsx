@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import api from '../api/axios';
+import { updateTaskAPI, createTaskAPI } from '../apis/taskApi';
+import { fetchUsersAPI } from '../apis/userApi';
+import Button from './common/Button';
+import Input from './common/Input';
 import { toast } from 'react-toastify';
 import { X, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -23,9 +26,9 @@ const TaskFormModal = ({ isOpen, onClose, taskToEdit, onTaskSaved }) => {
             // Fetch users for assignment
             const fetchUsers = async () => {
                 try {
-                    const response = await api.get('/users');
+                    const data = await fetchUsersAPI();
                     // Filter out current user and admins so they can't be assigned
-                    const otherUsers = response.data.filter(u => u._id !== currentUser?._id && u.role !== 'admin');
+                    const otherUsers = data.filter(u => u._id !== currentUser?._id && u.role !== 'admin');
                     setUsers(otherUsers);
                 } catch (error) {
                     console.error('Failed to load users', error);
@@ -73,10 +76,10 @@ const TaskFormModal = ({ isOpen, onClose, taskToEdit, onTaskSaved }) => {
             };
 
             if (taskToEdit) {
-                await api.put(`/tasks/${taskToEdit._id}`, payload);
+                await updateTaskAPI(taskToEdit._id, payload);
                 toast.success('Task updated successfully');
             } else {
-                await api.post('/tasks', payload);
+                await createTaskAPI(payload);
                 toast.success('Task created successfully');
             }
             onTaskSaved();
@@ -106,30 +109,22 @@ const TaskFormModal = ({ isOpen, onClose, taskToEdit, onTaskSaved }) => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
-                    <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Title</label>
-                        <input
-                            type="text"
-                            name="title"
-                            value={formData.title}
-                            onChange={handleChange}
-                            required
-                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
-                            placeholder="What needs to be done?"
-                        />
-                    </div>
+                    <Input
+                        label="Title"
+                        name="title"
+                        value={formData.title}
+                        onChange={handleChange}
+                        required
+                        placeholder="What needs to be done?"
+                    />
 
-                    <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Tags (comma separated)</label>
-                        <input
-                            type="text"
-                            name="tags"
-                            value={formData.tags}
-                            onChange={handleChange}
-                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
-                            placeholder="e.g. Design, Urgent, Backend"
-                        />
-                    </div>
+                    <Input
+                        label="Tags (comma separated)"
+                        name="tags"
+                        value={formData.tags}
+                        onChange={handleChange}
+                        placeholder="e.g. Design, Urgent, Backend"
+                    />
 
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-1.5">Description</label>
@@ -215,32 +210,33 @@ const TaskFormModal = ({ isOpen, onClose, taskToEdit, onTaskSaved }) => {
                         <p className="text-xs text-slate-400 mt-1">Click to select/deselect multiple members.</p>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Due Date</label>
-                        <input
-                            type="date"
-                            name="dueDate"
-                            value={formData.dueDate}
-                            onChange={handleChange}
-                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
-                        />
-                    </div>
+                    <Input
+                        label="Due Date"
+                        type="date"
+                        name="dueDate"
+                        value={formData.dueDate}
+                        onChange={handleChange}
+                    />
 
                     <div className="flex gap-4 pt-4 border-t border-slate-50 mt-auto">
-                        <button
+                        <Button
                             type="button"
                             onClick={onClose}
-                            className="flex-1 px-4 py-2.5 text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 font-semibold transition-all duration-200"
+                            variant="secondary"
+                            className="flex-1"
                         >
                             Cancel
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             type="submit"
-                            disabled={loading}
-                            className="flex-1 px-4 py-2.5 text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 font-semibold shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transform active:scale-[0.98] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
+                            loading={loading}
+                            variant="primary" // Explicitly primary
+                            // If I want to keep the shadow effects I need to pass className
+                            // Button component supports className merging.
+                            className="flex-1 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200"
                         >
-                            {loading ? 'Saving...' : taskToEdit ? 'Save Changes' : 'Create Task'}
-                        </button>
+                            {taskToEdit ? 'Save Changes' : 'Create Task'}
+                        </Button>
                     </div>
                 </form>
             </div>

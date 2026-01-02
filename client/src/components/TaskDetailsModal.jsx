@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import Modal from './Modal';
-import api from '../api/axios';
+import {
+    fetchSubtasksAPI, fetchCommentsAPI, fetchLogsAPI,
+    createSubtaskAPI, updateSubtaskAPI, deleteSubtaskAPI,
+    createCommentAPI
+} from '../apis/taskApi';
 import { Trash2, Send, CheckCircle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import clsx from 'clsx';
@@ -22,14 +26,14 @@ const TaskDetailsModal = ({ isOpen, onClose, task, onTaskUpdated }) => {
 
     const fetchDetails = async () => {
         try {
-            const [subtasksRes, commentsRes, logsRes] = await Promise.all([
-                api.get(`/tasks/${task._id}/subtasks`),
-                api.get(`/tasks/${task._id}/comments`),
-                api.get(`/tasks/${task._id}/logs`),
+            const [subtasksData, commentsData, logsData] = await Promise.all([
+                fetchSubtasksAPI(task._id),
+                fetchCommentsAPI(task._id),
+                fetchLogsAPI(task._id),
             ]);
-            setSubtasks(subtasksRes.data);
-            setComments(commentsRes.data);
-            setLogs(logsRes.data);
+            setSubtasks(subtasksData);
+            setComments(commentsData);
+            setLogs(logsData);
         } catch (error) {
             console.error('Failed to fetch details', error);
             toast.error('Failed to load task details');
@@ -40,7 +44,7 @@ const TaskDetailsModal = ({ isOpen, onClose, task, onTaskUpdated }) => {
         e.preventDefault();
         if (!newSubtask.trim()) return;
         try {
-            await api.post(`/tasks/${task._id}/subtasks`, { title: newSubtask, status: 'Todo' });
+            await createSubtaskAPI(task._id, { title: newSubtask, status: 'Todo' });
             setNewSubtask('');
             fetchDetails(); // Refresh
             toast.success('Subtask added');
@@ -52,7 +56,7 @@ const TaskDetailsModal = ({ isOpen, onClose, task, onTaskUpdated }) => {
     const handleToggleSubtask = async (subtask) => {
         try {
             const newStatus = subtask.status === 'Done' ? 'Todo' : 'Done';
-            await api.put(`/subtasks/${subtask._id}`, { status: newStatus });
+            await updateSubtaskAPI(subtask._id, { status: newStatus });
             fetchDetails();
         } catch (error) {
             toast.error('Failed to update subtask');
@@ -61,7 +65,7 @@ const TaskDetailsModal = ({ isOpen, onClose, task, onTaskUpdated }) => {
 
     const handleDeleteSubtask = async (subtaskId) => {
         try {
-            await api.delete(`/subtasks/${subtaskId}`);
+            await deleteSubtaskAPI(subtaskId);
             fetchDetails();
             toast.success('Subtask deleted');
         } catch (error) {
@@ -73,7 +77,7 @@ const TaskDetailsModal = ({ isOpen, onClose, task, onTaskUpdated }) => {
         e.preventDefault();
         if (!newComment.trim()) return;
         try {
-            await api.post(`/tasks/${task._id}/comments`, { content: newComment });
+            await createCommentAPI(task._id, { content: newComment });
             setNewComment('');
             fetchDetails();
             toast.success('Comment added');

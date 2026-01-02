@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, useContext } from 'react';
-import api from '../api/axios';
+import { loginAPI, registerAPI } from '../apis/authApi';
 
 const AuthContext = createContext();
 
@@ -11,12 +11,6 @@ export const AuthProvider = ({ children }) => {
         const checkLoggedIn = async () => {
             const token = localStorage.getItem('token');
             if (token) {
-                // Ideally we should have a /me endpoint to fetch current user data,
-                // but for now we can rely on what we stored or just trust the token (weak).
-                // Let's implement a simplified restore: assume validity or decode JWT manually.
-                // For security, checking /me is better. Let's add that to backend quickly or just decode.
-                // Since I didn't add /me, I'll assume if token exists we are 'logged in' but we might miss user details.
-                // Let's store user details in localStorage too for simplicity in this MVP.
                 const storedUser = localStorage.getItem('user');
                 if (storedUser) {
                     setUser(JSON.parse(storedUser));
@@ -28,21 +22,21 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const login = async (email, password) => {
-        const response = await api.post('/auth/login', { email, password });
-        const { token, ...userData } = response.data;
+        const data = await loginAPI(email, password);
+        const { token, ...userData } = data;
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
-        return response.data;
+        return data;
     };
 
     const register = async (username, email, password) => {
-        const response = await api.post('/auth/register', { username, email, password });
-        const { token, ...userData } = response.data;
+        const data = await registerAPI(username, email, password);
+        const { token, ...userData } = data;
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
-        return response.data;
+        return data;
     };
 
     const logout = () => {

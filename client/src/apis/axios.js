@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const api = axios.create({
+const authorizedAxiosInstance = axios.create({
     baseURL: 'http://localhost:5000/api',
     headers: {
         'Content-Type': 'application/json',
@@ -8,7 +8,7 @@ const api = axios.create({
 });
 
 // Add a request interceptor
-api.interceptors.request.use(
+authorizedAxiosInstance.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
         if (token) {
@@ -22,7 +22,7 @@ api.interceptors.request.use(
 );
 
 // Add a response interceptor
-api.interceptors.response.use(
+authorizedAxiosInstance.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
@@ -35,4 +35,4 @@ api.interceptors.response.use(
     }
 );
 
-export default api;
+export default authorizedAxiosInstance;

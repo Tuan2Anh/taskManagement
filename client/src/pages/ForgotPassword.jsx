@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../api/axios';
+import { forgotPasswordAPI } from '../apis/authApi';
 import { toast } from 'react-toastify';
 import { Mail, ArrowLeft, Loader } from 'lucide-react';
 
@@ -13,7 +13,7 @@ const ForgotPassword = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            await api.post('/auth/forgotpassword', { email });
+            await forgotPasswordAPI(email);
             setSubmitted(true);
             toast.success('Reset link sent to your email');
         } catch (error) {

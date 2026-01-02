@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import api from '../api/axios';
+import { fetchTasksAPI, deleteTaskAPI, updateTaskAPI, exportTasksAPI } from '../apis/taskApi';
+import { fetchUsersAPI } from '../apis/userApi';
 import TaskItem from '../components/TaskItem';
 import TaskFilter from '../components/TaskFilter';
 import TaskFormModal from '../components/TaskFormModal';
@@ -34,22 +35,22 @@ const Dashboard = () => {
     const fetchTasks = async (page = 1) => {
         try {
             setLoading(true);
-            const params = new URLSearchParams();
-            if (filters.search) params.append('search', filters.search);
-            if (filters.status) params.append('status', filters.status);
-            if (filters.priority) params.append('priority', filters.priority);
-            if (filters.assignee) params.append('assignee', filters.assignee);
-            if (filters.dueDate) params.append('dueDate', filters.dueDate);
-            if (filters.tags) params.append('tags', filters.tags);
-            params.append('page', page);
-            params.append('limit', 9); // 9 items per page (3x3 grid)
+            const params = {};
+            if (filters.search) params.search = filters.search;
+            if (filters.status) params.status = filters.status;
+            if (filters.priority) params.priority = filters.priority;
+            if (filters.assignee) params.assignee = filters.assignee;
+            if (filters.dueDate) params.dueDate = filters.dueDate;
+            if (filters.tags) params.tags = filters.tags;
+            params.page = page;
+            params.limit = 9; // 9 items per page (3x3 grid)
 
-            const response = await api.get(`/tasks?${params.toString()}`);
-            setTasks(response.data.tasks);
+            const data = await fetchTasksAPI(params);
+            setTasks(data.tasks);
             setPagination({
-                currentPage: response.data.currentPage,
-                totalPages: response.data.totalPages,
-                totalTasks: response.data.totalTasks,
+                currentPage: data.currentPage,
+                totalPages: data.totalPages,
+                totalTasks: data.totalTasks,
             });
         } catch (error) {
             toast.error('Failed to fetch tasks');
@@ -61,8 +62,8 @@ const Dashboard = () => {
 
     const fetchUsers = async () => {
         try {
-            const response = await api.get('/users');
-            setUsers(response.data);
+            const data = await fetchUsersAPI();
+            setUsers(data);
         } catch (error) {
             console.error('Failed to fetch users', error);
         }
@@ -85,7 +86,7 @@ const Dashboard = () => {
     const handleDelete = async (taskId) => {
         if (window.confirm('Are you sure you want to delete this task?')) {
             try {
-                await api.delete(`/tasks/${taskId}`);
+                await deleteTaskAPI(taskId);
                 toast.success('Task deleted successfully');
                 fetchTasks();
             } catch (error) {
@@ -96,7 +97,7 @@ const Dashboard = () => {
 
     const handleUpdateStatus = async (taskId, newStatus) => {
         try {
-            await api.put(`/tasks/${taskId}`, { status: newStatus });
+            await updateTaskAPI(taskId, { status: newStatus });
             toast.success('Task status updated');
             fetchTasks(); // Optional: optimistic update
         } catch (error) {
@@ -124,10 +125,8 @@ const Dashboard = () => {
 
     const handleExport = async () => {
         try {
-            const response = await api.get('/tasks/export', {
-                responseType: 'blob',
-            });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const data = await exportTasksAPI();
+            const url = window.URL.createObjectURL(new Blob([data]));
             const link = document.createElement('a');
             link.href = url;
             link.setAttribute('download', 'tasks.xlsx');

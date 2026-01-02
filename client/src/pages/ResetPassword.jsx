@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import api from '../api/axios';
+import { resetPasswordAPI } from '../apis/authApi';
 import { toast } from 'react-toastify';
 import { Lock, Loader, ArrowLeft } from 'lucide-react';
 
@@ -20,7 +20,7 @@ const ResetPassword = () => {
 
         setLoading(true);
         try {
-            await api.put(`/auth/resetpassword/${token}`, { password });
+            await resetPasswordAPI(token, password);
             toast.success('Password reset successfully! Please login.');
             navigate('/login');
         } catch (error) {
